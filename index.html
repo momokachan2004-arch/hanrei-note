@@ -115,6 +115,7 @@
   section.block li + li { margin-top: 6px; }
   section.holding { border-left: 4px solid var(--accent); }
   section.points { border-left: 4px solid var(--gold); }
+  section.commentary { border-left: 4px solid var(--muted); }
   .memo {
     width: 100%; min-height: 120px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
     background: var(--bg); resize: vertical; line-height: 1.7; font-size: 15px;
@@ -157,6 +158,12 @@
 </div>
 
 <script src="cases.js"></script>
+<script src="data/company.js"></script>
+<script src="data/securities.js"></script>
+<script src="data/antitrust.js"></script>
+<script src="data/privacy.js"></script>
+<script src="data/civil.js"></script>
+<script src="data/labor.js"></script>
 <script>
 (() => {
   const KEY = "hanrei-note:v1";
@@ -186,7 +193,7 @@
     current = b.dataset.key; renderChips(); renderList();
   });
 
-  const haystack = (c) => [c.title, c.court, c.date, c.source, c.area, ...c.topics, c.facts, c.holding, ...c.points, ...c.articles, store.memo[c.id] || ""].join(" ");
+  const haystack = (c) => [c.title, c.court, c.date, c.source, c.area, ...c.topics, c.facts, c.holding, c.commentary || "", ...c.points, ...c.articles, store.memo[c.id] || ""].join(" ");
   const norm = (s) => s.normalize("NFKC").toLowerCase();
 
   function renderList() {
@@ -228,9 +235,10 @@
       ${c.url
         ? `<a class="btn primary" href="${esc(c.url)}" target="_blank" rel="noopener">裁判所サイトで全文を読む ↗</a>`
         : `<a class="btn" href="${SEARCH_URL}" target="_blank" rel="noopener">裁判所サイトで検索する ↗</a><div class="meta" style="margin-top:6px;font-size:13px">この裁判例は裁判所サイトに掲載がありません。判例集等で確認してください。</div>`}
-      ${store.ok[c.id] ? "" : '<div class="notice">判旨は要約です。日付・出典・内容は原典で確認してから使ってください。</div>'}
+      ${store.ok[c.id] ? "" : '<div class="notice">判旨は裁判所サイトの裁判要旨をもとにした要約、解説・実務ポイントはこのノートの独自のまとめです。原典で確認してから使ってください。</div>'}
       <section class="block"><h3>事案</h3><p>${esc(c.facts)}</p></section>
       <section class="block holding"><h3>判旨（要約）</h3><p>${esc(c.holding)}</p></section>
+      ${c.commentary ? `<section class="block commentary"><h3>解説</h3><p>${esc(c.commentary)}</p></section>` : ""}
       <section class="block points"><h3>実務ポイント</h3><ul>${c.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul></section>
       <section class="block"><h3>関連条文</h3><p>${c.articles.map(esc).join("、")}</p></section>
       <section class="block">
