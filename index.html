@@ -84,6 +84,7 @@
   .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .tag { font-size: 12px; background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 8px; }
   .tag.area { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+  .tag.lower { background: var(--warn-soft); color: var(--warn); }
   .star { color: var(--gold); font-size: 16px; }
   .ok-mark { color: var(--ok); font-size: 12px; white-space: nowrap; }
   .empty { text-align: center; color: var(--muted); padding: 40px 0; }
@@ -160,7 +161,10 @@
 <script src="cases.js"></script>
 <script src="data/company.js"></script>
 <script src="data/securities.js"></script>
+<script src="data/ma.js"></script>
 <script src="data/antitrust.js"></script>
+<script src="data/subcontract.js"></script>
+<script src="data/advertising.js"></script>
 <script src="data/privacy.js"></script>
 <script src="data/civil.js"></script>
 <script src="data/labor.js"></script>
@@ -176,10 +180,14 @@
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const byId = Object.fromEntries(CASES.map((c) => [c.id, c]));
+  // 同じ id が複数回読み込まれても（古いキャッシュが混ざった場合など）、後から読み込んだものだけを使う
+  const seen = new Set();
+  const LIST = CASES.slice().reverse().filter((c) => !seen.has(c.id) && seen.add(c.id)).reverse();
+  const byId = Object.fromEntries(LIST.map((c) => [c.id, c]));
+  const lowerTag = (c) => c.court.startsWith("最高裁") ? "" : '<span class="tag lower">下級審</span>';
 
   // ---- 一覧 ----
-  const areas = [...new Set(CASES.map((c) => c.area))];
+  const areas = [...new Set(LIST.map((c) => c.area))];
   const filters = [{ key: "all", label: "すべて" }, ...areas.map((a) => ({ key: "area:" + a, label: a })),
     { key: "fav", label: "★ お気に入り" }, { key: "unchecked", label: "未確認" }, { key: "memo", label: "メモあり" }];
   let current = "all";
@@ -198,7 +206,7 @@
 
   function renderList() {
     const words = norm($("q").value).split(/\s+/).filter(Boolean);
-    const shown = CASES.filter((c) => {
+    const shown = LIST.filter((c) => {
       if (current.startsWith("area:") && c.area !== current.slice(5)) return false;
       if (current === "fav" && !store.fav[c.id]) return false;
       if (current === "unchecked" && store.ok[c.id]) return false;
@@ -206,7 +214,7 @@
       const h = norm(haystack(c));
       return words.every((w) => h.includes(w));
     });
-    $("count").textContent = `${shown.length}件 / 全${CASES.length}件`;
+    $("count").textContent = `${shown.length}件 / 全${LIST.length}件`;
     $("list").innerHTML = shown.length ? shown.map((c) => `
       <a class="item" href="#${esc(c.id)}">
         <div class="row">
@@ -214,7 +222,7 @@
           ${store.fav[c.id] ? '<span class="star" aria-label="お気に入り">★</span>' : ""}
         </div>
         <div class="meta">${esc(c.court)}　${esc(c.date)}　${store.ok[c.id] ? '<span class="ok-mark">✓ 確認済み</span>' : ""}</div>
-        <div class="tags"><span class="tag area">${esc(c.area)}</span>${c.topics.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+        <div class="tags"><span class="tag area">${esc(c.area)}</span>${lowerTag(c)}${c.topics.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>
       </a>`).join("") : '<div class="empty">該当する判例がありません</div>';
   }
   $("q").addEventListener("input", renderList);
@@ -225,7 +233,7 @@
     const v = $("detailView");
     v.innerHTML = `
       <button class="back" id="backBtn">‹ 一覧へ</button>
-      <div class="tags"><span class="tag area">${esc(c.area)}</span>${c.topics.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+      <div class="tags"><span class="tag area">${esc(c.area)}</span>${lowerTag(c)}${c.topics.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>
       <h1>${esc(c.title)}</h1>
       <div class="meta">${esc(c.court)}　${esc(c.date)}　${esc(c.source)}</div>
       <div class="actions">
@@ -235,7 +243,7 @@
       ${c.url
         ? `<a class="btn primary" href="${esc(c.url)}" target="_blank" rel="noopener">裁判所サイトで全文を読む ↗</a>`
         : `<a class="btn" href="${SEARCH_URL}" target="_blank" rel="noopener">裁判所サイトで検索する ↗</a><div class="meta" style="margin-top:6px;font-size:13px">この裁判例は裁判所サイトに掲載がありません。判例集等で確認してください。</div>`}
-      ${store.ok[c.id] ? "" : '<div class="notice">判旨は裁判所サイトの裁判要旨をもとにした要約、解説・実務ポイントはこのノートの独自のまとめです。原典で確認してから使ってください。</div>'}
+      ${store.ok[c.id] ? "" : '<div class="notice">判旨は裁判所サイトの裁判要旨・判決文をもとにした要約、解説・実務ポイントはこのノートの独自のまとめです。原典で確認してから使ってください。</div>'}
       <section class="block"><h3>事案</h3><p>${esc(c.facts)}</p></section>
       <section class="block holding"><h3>判旨（要約）</h3><p>${esc(c.holding)}</p></section>
       ${c.commentary ? `<section class="block commentary"><h3>解説</h3><p>${esc(c.commentary)}</p></section>` : ""}

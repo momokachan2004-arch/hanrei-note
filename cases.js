@@ -1,5 +1,6 @@
 // 判例データの入れ物。中身は data/ フォルダに分野ごとに入っている。
-//   data/company.js（会社法） data/securities.js（金商法） data/antitrust.js（独禁法）
+//   data/company.js（会社法） data/securities.js（金商法） data/ma.js（M&A契約） data/antitrust.js（独禁法）
+//   data/subcontract.js（下請法・取適法） data/advertising.js（景表法・広告）
 //   data/privacy.js（個人情報・プライバシー） data/civil.js（民法） data/labor.js（労働法）
 //
 // 1件の書き方:
