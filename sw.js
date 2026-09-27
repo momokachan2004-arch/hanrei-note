@@ -1,5 +1,5 @@
 // Offline cache for 判例ノート. Bump VERSION whenever index.html or cases.js changes.
-const VERSION = "hanrei-note-v1";
+const VERSION = "hanrei-note-v2";
 const FILES = ["./", "index.html", "cases.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
