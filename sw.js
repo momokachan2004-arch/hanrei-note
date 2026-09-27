@@ -1,6 +1,6 @@
 // Offline cache for 判例ノート. Bump VERSION whenever index.html or any data file changes.
-const VERSION = "hanrei-note-v5";
-const FILES = ["./", "index.html", "cases.js", "data/company.js", "data/securities.js", "data/ma.js", "data/antitrust.js", "data/subcontract.js", "data/advertising.js", "data/privacy.js", "data/civil.js", "data/labor.js", "data/watch.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
+const VERSION = "hanrei-note-v6";
+const FILES = ["./", "index.html", "cases.js", "data/company.js", "data/securities.js", "data/ma.js", "data/antitrust.js", "data/subcontract.js", "data/advertising.js", "data/privacy.js", "data/civil.js", "data/labor.js", "data/related.js", "data/watch.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));

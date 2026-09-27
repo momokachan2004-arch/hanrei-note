@@ -11,7 +11,9 @@
 //   area: "会社法",   ← 新しい分野名を書けば絞り込みボタンが自動で増える
 //   topics: ["論点", ...],
 //   facts: "事案", holding: "判旨（要約）", commentary: "解説",
-//   points: ["実務ポイント", ...], articles: ["関連条文", ...]
+//   points: ["実務ポイント", ...], articles: ["関連条文", ...],
+//   appeals: [{ court, date, caseNo, result, url, note }]   ← 下級審の上級審の判断（分かっているもの。任意）
+// 関連判例のつながりは data/related.js に書く。
 // }
 // 判旨は原文ではなく要約。裁判所サイトの「裁判要旨」をもとに書いている。
 // 追加・修正したら sw.js の VERSION の数字を1つ上げる。

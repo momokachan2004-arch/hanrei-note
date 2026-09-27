@@ -113,6 +113,41 @@ export function wanted(item) {
   return /\(行/.test(item.caseNo) || item.areas.includes("労働法") || item.areas.some((a) => LOWER_CIVIL_KEEP.has(a));
 }
 
+// ---- 判例ノートの下級審の「その後」を追うための照合 ----
+// 事件番号をそろえる：「平成30年(行ウ)第30号」「平成30(行ウ)30」→「平成30(行ウ)30」
+export function normCaseNo(s) {
+  const m = (s || "").replace(/\s/g, "").match(/(令和|平成|昭和)(元|\d+)年?\(([^)]+)\)第?(\d+)号?/);
+  return m ? `${m[1]}${m[2] === "元" ? 1 : +m[2]}(${m[3]})${+m[4]}` : "";
+}
+// 裁判所名をそろえる：「東京地裁」→「東京地方裁判所」
+export const normCourt = (s) => (s || "").replace(/\s/g, "").replace(/地裁/, "地方裁判所").replace(/高裁/, "高等裁判所");
+
+// 原審（gensin）が判例ノートのどの判例に当たるか。notes は [{id, court, caseNo}]
+export function findFollow(item, notes) {
+  const g = (item.gensin || "").replace(/\s/g, "");
+  const no = normCaseNo(g);
+  if (!no) return "";
+  const hit = notes.find((n) => n.caseNo === no && g.startsWith(normCourt(n.court).replace(/(第.+部|民事.+部)$/, "")));
+  return hit ? hit.id : "";
+}
+
+// data/ フォルダの判例ノートから、事件番号が分かる判例（主に下級審）を読み出す
+function loadNotes(fs) {
+  const dir = new URL("../data/", import.meta.url);
+  const notes = [];
+  for (const name of fs.readdirSync(dir)) {
+    if (!name.endsWith(".js") || name === "watch.js" || name === "related.js") continue;
+    const txt = fs.readFileSync(new URL(name, dir), "utf8");
+    for (const block of txt.split(/\n  \{\n/).slice(1)) {
+      const field = (k) => (block.match(new RegExp(`\\n\\s*${k}: "([^"]*)"`)) || [])[1] || "";
+      const id = (block.match(/^\s*id: "([^"]+)"/) || [])[1];
+      const caseNo = normCaseNo(field("caseNo") || field("source"));
+      if (id && caseNo) notes.push({ id, court: field("court"), caseNo });
+    }
+  }
+  return notes;
+}
+
 async function get(url) {
   const res = await fetch(url, { headers: { "User-Agent": UA } });
   if (!res.ok) throw new Error(`${res.status} ${url}`);
@@ -131,6 +166,7 @@ async function main() {
     data.skipped ||= [];
   }
   const known = new Set([...data.items.map((i) => i.id), ...data.skipped]);
+  const notes = loadNotes(fs);
   let changed = false;
   let added = 0;
 
@@ -145,7 +181,8 @@ async function main() {
         await sleep(1000);
         const f = parseDetail(await get(`${BASE}/hanrei/${num}/detail${detail}/index.html`));
         const item = toItem(list.kind, num, detail, f, today);
-        if (wanted(item)) { data.items.push(item); added++; }
+        item.follows = findFollow(item, notes);   // 判例ノートの下級審の上級審なら、その判例の id
+        if (item.follows || wanted(item)) { data.items.push(item); added++; }
         else data.skipped.push(num);
         changed = true;
       }
@@ -162,6 +199,7 @@ async function main() {
     const detail = old.url.match(/detail(\d)/)[1];
     const f = parseDetail(await get(old.url));
     const fresh = toItem(old.kind, old.id, detail, f, old.firstSeen);
+    fresh.follows = findFollow(fresh, notes) || old.follows || "";
     if (fresh.source !== old.source || fresh.summary !== old.summary || fresh.point !== old.point) {
       Object.assign(old, fresh);
       changed = true;

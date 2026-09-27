@@ -124,6 +124,22 @@
   .saved { color: var(--muted); font-size: 12px; height: 18px; margin-top: 4px; }
   a.ext { color: var(--accent); }
 
+  /* 関連判例・上級審 */
+  .rel-group + .rel-group { margin-top: 12px; }
+  .rel-name { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .rel-link {
+    display: block; padding: 8px 10px; margin-top: 6px; border-radius: 10px; background: var(--bg);
+    color: var(--ink); text-decoration: none; font-family: var(--serif); font-size: 15px;
+  }
+  .rel-link span { display: block; font-family: var(--sans); font-size: 12px; color: var(--muted); }
+  .rel-link:hover { background: var(--accent-soft); }
+  section.follows { border-left: 4px solid var(--warn); }
+  .follow + .follow { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .follow-head { font-size: 14px; }
+  .follow p { margin: 4px 0; font-size: 14px; }
+  .sub-note { color: var(--muted); font-size: 14px; }
+  .tag.follow-tag { background: var(--warn-soft); color: var(--warn); text-decoration: none; }
+
   /* tabs */
   .tabs { display: flex; gap: 4px; background: var(--accent-soft); border-radius: 12px; padding: 4px; margin: 4px 0 14px; }
   .tab {
@@ -211,6 +227,7 @@
 <script src="data/privacy.js"></script>
 <script src="data/civil.js"></script>
 <script src="data/labor.js"></script>
+<script src="data/related.js"></script>
 <script src="data/watch.js"></script>
 <script>
 (() => {
@@ -230,6 +247,27 @@
   const LIST = CASES.slice().reverse().filter((c) => !seen.has(c.id) && seen.add(c.id)).reverse();
   const byId = Object.fromEntries(LIST.map((c) => [c.id, c]));
   const lowerTag = (c) => c.court.startsWith("最高裁") ? "" : '<span class="tag lower">下級審</span>';
+
+  // 関連判例：id → [[グループ名, [id...]], ...]
+  const relatedOf = {};
+  (typeof RELATED === "undefined" ? [] : RELATED).forEach(([name, ids]) => ids.forEach((id) => {
+    (relatedOf[id] ||= []).push([name, ids.filter((x) => x !== id && byId[x])]);
+  }));
+
+  // 上級審の追跡：新着判例の「原審」が判例ノートの下級審と一致するか（automation/watch.mjs と同じ規則）
+  const normCaseNo = (s) => {
+    const m = (s || "").replace(/\s/g, "").match(/(令和|平成|昭和)(元|\d+)年?\(([^)]+)\)第?(\d+)号?/);
+    return m ? `${m[1]}${m[2] === "元" ? 1 : +m[2]}(${m[3]})${+m[4]}` : "";
+  };
+  const normCourt = (s) => (s || "").replace(/\s/g, "").replace(/地裁/, "地方裁判所").replace(/高裁/, "高等裁判所");
+  const lowerNotes = LIST.filter((c) => !c.court.startsWith("最高裁"))
+    .map((c) => ({ id: c.id, court: normCourt(c.court), caseNo: normCaseNo(c.caseNo || c.source) })).filter((n) => n.caseNo);
+  const followOf = (i) => {
+    if (i.follows && byId[i.follows]) return i.follows;
+    const g = (i.gensin || "").replace(/\s/g, ""); const no = normCaseNo(g);
+    const hit = no && lowerNotes.find((n) => n.caseNo === no && g.startsWith(n.court));
+    return hit ? hit.id : "";
+  };
 
   // ---- 一覧 ----
   const areas = [...new Set(LIST.map((c) => c.area))];
@@ -274,6 +312,26 @@
 
   // ---- 詳細 ----
   let saveTimer;
+
+  // 下級審の「上級審・その後」欄（手動で登録した appeals ＋ 新着ウォッチで見つかったもの）
+  function renderFollowUps(c) {
+    if (c.court.startsWith("最高裁")) return "";
+    const manual = (c.appeals || []).map((a) => `
+      <div class="follow">
+        <div class="follow-head">${esc(a.court)}　${esc(a.date)}　<strong>${esc(a.result)}</strong></div>
+        ${a.note ? `<p>${esc(a.note)}</p>` : ""}
+        ${a.url ? `<a class="ext" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.caseNo || "裁判所サイト")} ↗</a>` : ""}
+      </div>`);
+    const auto = W.items.filter((i) => followOf(i) === c.id).map((i) => `
+      <div class="follow auto">
+        <div class="follow-head">${esc(i.court)}　${esc(i.date)}　<strong>${esc(i.result || i.type)}</strong>　<span class="tag new">自動検出</span></div>
+        ${i.point || i.summary ? `<p>${esc(i.point || i.summary)}</p>` : ""}
+        <a class="ext" href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.caseNo)} ↗</a>
+      </div>`);
+    const body = manual.concat(auto).join("") ||
+      '<p class="sub-note">裁判所サイトでは上級審の判断は見つかっていません（掲載されていない可能性もあります）。新着判例ウォッチで毎日自動的に確認しています。</p>';
+    return `<section class="block follows"><h3>上級審・その後</h3>${body}</section>`;
+  }
   function renderDetail(c) {
     const v = $("detailView");
     v.innerHTML = `
@@ -294,6 +352,11 @@
       ${c.commentary ? `<section class="block commentary"><h3>解説</h3><p>${esc(c.commentary)}</p></section>` : ""}
       <section class="block points"><h3>実務ポイント</h3><ul>${c.points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul></section>
       <section class="block"><h3>関連条文</h3><p>${c.articles.map(esc).join("、")}</p></section>
+      ${renderFollowUps(c)}
+      ${relatedOf[c.id] ? `<section class="block related"><h3>関連判例</h3>${relatedOf[c.id].map(([name, ids]) => `
+        <div class="rel-group"><div class="rel-name">${esc(name)}</div>
+        ${ids.map((id) => `<a class="rel-link" href="#${esc(id)}">${esc(byId[id].title)}<span>${esc(byId[id].court)}　${esc(byId[id].date)}</span></a>`).join("")}</div>`).join("")}
+      </section>` : ""}
       <section class="block">
         <h3>自分メモ</h3>
         <textarea class="memo" id="memo" placeholder="案件で使った場面、関連する裁判例、気づいたことなど">${esc(store.memo[c.id] || "")}</textarea>
@@ -354,6 +417,7 @@
           <span class="tag ${i.kind === "下級審" ? "lower" : "area"}">${esc(i.kind)}</span>
           ${i.areas.filter((a) => a !== "その他").map((a) => `<span class="tag">${esc(a)}</span>`).join("")}
           ${noteUrls.has(i.url) ? '<span class="tag in-note">ノート収録済み</span>' : ""}
+          ${followOf(i) ? `<a class="tag follow-tag" href="#${esc(followOf(i))}">ノート判例の上級審：${esc(byId[followOf(i)].title)}</a>` : ""}
         </div>
         <h2>${esc(i.name || i.caseNo)}</h2>
         <div class="meta">${esc(i.court)}　${esc(i.date)}${i.type ? "　" + esc(i.type) : ""}${i.result ? "（" + esc(i.result) + "）" : ""}</div>

@@ -1,0 +1,33 @@
+// 関連判例のグループ。同じグループに入っている判例どうしが、詳細画面の「関連判例」で相互にリンクされる。
+// 書き方：["グループ名", ["判例のid", "判例のid", ...]]
+const RELATED = [
+  ["株式の価格決定（組織再編・スクイーズアウト）", ["rakuten-tbs", "tecmo", "jcom"]],
+  ["買収防衛・M&Aの公正性", ["bulldog", "jcom"]],
+  ["内部統制・監視義務", ["daiwa", "nihon-system", "kanshi-gimu", "kaikei-kansayaku", "429"]],
+  ["取締役の責任と経営判断", ["apamanshop", "janome", "yawata", "daihyo-sosho-hani"]],
+  ["新株発行の差止め・無効", ["karishobun", "fukosei-hakko", "koji-kekka", "hikokai-hakko", "yuri-hakko"]],
+  ["取締役会・株主総会の決議", ["jigyojoto", "daihyo-torihiki", "sairyokikyaku", "taishoku-ireikin"]],
+  ["会社を使った債務逃れへの対応", ["keigai", "kaisha-bunkatsu"]],
+  ["相続と株式・預金", ["junkyoyu", "yokin-sozoku"]],
+  ["反社会的勢力への対応", ["janome", "hansha-hosho"]],
+  ["有価証券報告書の虚偽記載", ["seibu", "livedoor", "nihon-system"]],
+  ["不当な取引制限（カルテル・談合）", ["sekiyu-cartel", "tama-dango"]],
+  ["私的独占（排除行為）", ["ntt-east", "jasrac"]],
+  ["不公正な取引方法", ["shiseido", "shibaura", "gifu-shoko"]],
+  ["違反契約の私法上の効力（独禁法・下請法）", ["gifu-shoko", "seicomart-henpin", "seicomart-kyoryokukin"]],
+  ["取引先・委託先へのハラスメント", ["freelance-editor", "kaiyukan"]],
+  ["不実証広告規制（合理的根拠資料）", ["fujitsu-koukoku-gouken", "seag-film", "toushitsu-cut-suihanki"]],
+  ["表示規制と消費者契約法", ["amazon-nijukakaku", "chlorella-chirashi", "koshinryo"]],
+  ["表明保証・契約交渉段階の責任", ["arco", "yakkyoku-hyomei-hosho", "setsumei-gimu"]],
+  ["個人情報の提供・漏えい", ["waseda", "benesse"]],
+  ["ネット上の情報の削除・発信者情報開示", ["google-sakujo", "twitter-sakujo", "hasshinsha-joho"]],
+  ["債権回収と担保", ["sosai", "shorai-saiken", "shugo-saiken", "shugo-dosan"]],
+  ["賃貸借契約", ["sublease", "koshinryo"]],
+  ["採用・解雇", ["mitsubishi-jushi", "kochi-hoso"]],
+  ["労働条件の不利益変更", ["shuhoku-bus", "yamanashi"]],
+  ["労働時間と割増賃金", ["daisei-building", "nihon-chemical", "kokusai-jidosha"]],
+  ["懲戒処分", ["fuji-kosan", "kaiyukan", "kochi-hoso"]],
+  ["安全配慮義務・過重労働", ["anzen-hairyo", "dentsu"]],
+  ["配転・人事権", ["toa-paint", "shuhoku-bus"]],
+  ["同一労働同一賃金", ["hamakyorex", "nagasawa", "osaka-ika", "metro-commerce", "nagoya-jidosha"]]
+];
