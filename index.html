@@ -124,6 +124,34 @@
   .saved { color: var(--muted); font-size: 12px; height: 18px; margin-top: 4px; }
   a.ext { color: var(--accent); }
 
+  /* tabs */
+  .tabs { display: flex; gap: 4px; background: var(--accent-soft); border-radius: 12px; padding: 4px; margin: 4px 0 14px; }
+  .tab {
+    flex: 1; text-align: center; padding: 8px 0; border-radius: 9px; text-decoration: none;
+    color: var(--accent); font-size: 15px; font-weight: 600;
+  }
+  .tab[aria-selected="true"] { background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .badge {
+    display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px;
+    background: var(--gold); color: #fff; font-size: 12px; line-height: 20px; vertical-align: 1px;
+  }
+
+  /* watch */
+  .watch-info { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  .count-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .linkbtn { border: none; background: none; color: var(--accent); font-size: 13px; padding: 4px 0; }
+  .witem { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .witem.unread { border-left: 4px solid var(--gold); }
+  .witem h2 { font-family: var(--serif); font-size: 16px; margin: 0; line-height: 1.5; }
+  .witem .meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .witem .point { margin: 8px 0 0; font-size: 14px; white-space: pre-line; }
+  .witem .point.clamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .witem .sub { font-size: 13px; color: var(--muted); margin-top: 8px; white-space: pre-line; }
+  .witem .actions { margin: 10px 0 0; }
+  .witem .btn { padding: 6px 12px; font-size: 13px; }
+  .tag.new { background: var(--gold); color: #fff; }
+  .tag.in-note { background: var(--ok-soft); color: var(--ok); }
+
   footer.tools { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
   footer.tools .actions { margin: 8px 0 0; }
   [hidden] { display: none !important; }
@@ -138,10 +166,25 @@
       <h1>判例ノート</h1>
       <p>企業法務の重要判例と実務ポイント</p>
     </header>
-    <input id="q" class="search" type="search" placeholder="事件名・論点・条文で検索（例：内部統制、429条）" autocomplete="off">
-    <div class="chips" id="chips" role="toolbar" aria-label="絞り込み"></div>
-    <div class="count" id="count"></div>
-    <div class="list" id="list"></div>
+    <div class="tabs" role="tablist">
+      <a class="tab" id="tabNotes" href="#" role="tab">判例ノート</a>
+      <a class="tab" id="tabWatch" href="#new" role="tab">新着判例<span class="badge" id="unreadBadge" hidden></span></a>
+    </div>
+
+    <section id="notesSection">
+      <input id="q" class="search" type="search" placeholder="事件名・論点・条文で検索（例：内部統制、429条）" autocomplete="off">
+      <div class="chips" id="chips" role="toolbar" aria-label="絞り込み"></div>
+      <div class="count" id="count"></div>
+      <div class="list" id="list"></div>
+    </section>
+
+    <section id="watchSection" hidden>
+      <p class="watch-info" id="watchInfo"></p>
+      <input id="wq" class="search" type="search" placeholder="事件名・判示事項で検索" autocomplete="off">
+      <div class="chips" id="wchips" role="toolbar" aria-label="新着の絞り込み"></div>
+      <div class="count-row"><span class="count" id="wcount"></span><button class="linkbtn" id="markAllBtn">表示中をすべて既読にする</button></div>
+      <div class="list" id="wlist"></div>
+    </section>
 
     <footer class="tools">
       ★・確認済み・メモは、この端末のブラウザの中だけに保存されます。機種変更の前などには書き出しておいてください。
@@ -168,6 +211,7 @@
 <script src="data/privacy.js"></script>
 <script src="data/civil.js"></script>
 <script src="data/labor.js"></script>
+<script src="data/watch.js"></script>
 <script>
 (() => {
   const KEY = "hanrei-note:v1";
@@ -175,7 +219,8 @@
   const load = () => {
     try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; }
   };
-  let store = Object.assign({ fav: {}, ok: {}, memo: {} }, load());
+  const EMPTY = () => ({ fav: {}, ok: {}, memo: {}, wRead: {}, wFav: {} });
+  let store = Object.assign(EMPTY(), load());
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch {} };
 
   const $ = (id) => document.getElementById(id);
@@ -266,13 +311,100 @@
     });
   }
 
-  // ---- 画面切り替え（#id で詳細） ----
+  // ---- 新着判例 ----
+  const W = typeof WATCH === "undefined" ? { updated: "", items: [] } : WATCH;
+  const noteUrls = new Set(LIST.map((c) => c.url).filter(Boolean));
+  const wAreas = [...new Set(W.items.flatMap((i) => i.areas))].filter((a) => a !== "その他");
+  const wFilters = [{ key: "all", label: "すべて" }, { key: "unread", label: "未読" }, { key: "fav", label: "☆ 気になる" },
+    { key: "sc", label: "最高裁" }, { key: "lower", label: "下級審" }, ...wAreas.map((a) => ({ key: "area:" + a, label: a }))];
+  let wCurrent = "all";
+
+  function updateBadge() {
+    const n = W.items.filter((i) => !store.wRead[i.id]).length;
+    $("unreadBadge").hidden = !n;
+    $("unreadBadge").textContent = n;
+  }
+  function wShown() {
+    const words = norm($("wq").value).split(/\s+/).filter(Boolean);
+    return W.items.filter((i) => {
+      if (wCurrent === "unread" && store.wRead[i.id]) return false;
+      if (wCurrent === "fav" && !store.wFav[i.id]) return false;
+      if (wCurrent === "sc" && i.kind !== "最高裁") return false;
+      if (wCurrent === "lower" && i.kind !== "下級審") return false;
+      if (wCurrent.startsWith("area:") && !i.areas.includes(wCurrent.slice(5))) return false;
+      const h = norm([i.name, i.caseNo, i.court, i.point, i.summary, i.refs, ...i.areas].join(" "));
+      return words.every((w) => h.includes(w));
+    });
+  }
+  function renderWatch() {
+    $("watchInfo").textContent = W.updated
+      ? `最終更新 ${W.updated}（毎朝9時に裁判所ウェブサイトを自動巡回）`
+      : "まだ巡回結果がありません。";
+    $("wchips").innerHTML = wFilters.map((f) =>
+      `<button class="chip" data-key="${esc(f.key)}" aria-pressed="${f.key === wCurrent}">${esc(f.label)}</button>`).join("");
+    const shown = wShown();
+    $("wcount").textContent = `${shown.length}件 / 全${W.items.length}件`;
+    $("wlist").innerHTML = shown.length ? shown.map((i) => {
+      const unread = !store.wRead[i.id];
+      const text = i.point || i.summary;
+      return `
+      <div class="witem ${unread ? "unread" : ""}" data-id="${esc(i.id)}">
+        <div class="tags" style="margin:0 0 6px">
+          ${unread ? '<span class="tag new">NEW</span>' : ""}
+          <span class="tag ${i.kind === "下級審" ? "lower" : "area"}">${esc(i.kind)}</span>
+          ${i.areas.filter((a) => a !== "その他").map((a) => `<span class="tag">${esc(a)}</span>`).join("")}
+          ${noteUrls.has(i.url) ? '<span class="tag in-note">ノート収録済み</span>' : ""}
+        </div>
+        <h2>${esc(i.name || i.caseNo)}</h2>
+        <div class="meta">${esc(i.court)}　${esc(i.date)}${i.type ? "　" + esc(i.type) : ""}${i.result ? "（" + esc(i.result) + "）" : ""}</div>
+        ${text ? `<p class="point clamp">${esc(text)}</p>` : '<p class="sub">要旨の掲載はまだありません。全文（PDF）で確認してください。</p>'}
+        ${i.summary && i.point ? `<p class="sub" hidden data-more>【裁判要旨】${esc(i.summary)}</p>` : ""}
+        <p class="sub" hidden data-more>${esc(i.caseNo)}${i.source ? "　" + esc(i.source) : ""}${i.gensin ? "\n原審：" + esc(i.gensin) : ""}${i.refs ? "\n参照法条：" + esc(i.refs) : ""}</p>
+        <div class="actions">
+          <a class="btn primary" href="${esc(i.url)}" target="_blank" rel="noopener" data-act="open">裁判所サイトで読む ↗</a>
+          <button class="btn" data-act="more">詳しく</button>
+          <button class="btn ${store.wFav[i.id] ? "on-star" : ""}" data-act="fav">${store.wFav[i.id] ? "★ 気になる" : "☆ 気になる"}</button>
+          ${unread ? '<button class="btn" data-act="read">既読にする</button>' : ""}
+        </div>
+      </div>`;
+    }).join("") : '<div class="empty">該当する新着判例はありません</div>';
+    updateBadge();
+  }
+  $("wchips").addEventListener("click", (e) => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    wCurrent = b.dataset.key; renderWatch();
+  });
+  $("wq").addEventListener("input", renderWatch);
+  $("wlist").addEventListener("click", (e) => {
+    const el = e.target.closest("[data-act]"); if (!el) return;
+    const card = el.closest(".witem"); const id = card.dataset.id;
+    const act = el.dataset.act;
+    if (act === "more") {
+      card.querySelector(".point")?.classList.toggle("clamp");
+      card.querySelectorAll("[data-more]").forEach((p) => { p.hidden = !p.hidden; });
+      el.textContent = el.textContent === "詳しく" ? "閉じる" : "詳しく";
+      return;
+    }
+    if (act === "fav") { store.wFav[id] = !store.wFav[id]; if (!store.wFav[id]) delete store.wFav[id]; }
+    if (act === "read" || act === "open") store.wRead[id] = true;
+    save();
+    if (act !== "open") renderWatch(); else setTimeout(renderWatch, 300);
+  });
+  $("markAllBtn").onclick = () => { wShown().forEach((i) => { store.wRead[i.id] = true; }); save(); renderWatch(); };
+
+  // ---- 画面切り替え（#id で詳細、#new で新着判例） ----
   function route() {
-    const c = byId[decodeURIComponent(location.hash.slice(1))];
+    const key = decodeURIComponent(location.hash.slice(1));
+    const c = byId[key];
+    const watch = key === "new";
     $("listView").hidden = !!c;
     $("detailView").hidden = !c;
-    if (c) { renderDetail(c); window.scrollTo(0, 0); }
-    else { renderChips(); renderList(); }
+    if (c) { renderDetail(c); window.scrollTo(0, 0); return; }
+    $("notesSection").hidden = watch;
+    $("watchSection").hidden = !watch;
+    $("tabNotes").setAttribute("aria-selected", String(!watch));
+    $("tabWatch").setAttribute("aria-selected", String(watch));
+    if (watch) renderWatch(); else { renderChips(); renderList(); updateBadge(); }
   }
   window.addEventListener("hashchange", route);
 
@@ -291,7 +423,7 @@
     try {
       const data = JSON.parse(await f.text());
       if (!confirm("今のメモ等を、読み込んだファイルの内容で上書きします。よろしいですか？")) return;
-      store = Object.assign({ fav: {}, ok: {}, memo: {} }, data);
+      store = Object.assign(EMPTY(), data);
       save(); route(); alert("読み込みました");
     } catch { alert("読み込めませんでした。書き出したファイルを選んでください。"); }
     e.target.value = "";

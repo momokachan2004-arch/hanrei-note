@@ -1,0 +1,48 @@
+name: 新着判例ウォッチ
+
+# 毎日 09:00(JST) に自動実行。Actions タブから手動実行も可。
+on:
+  schedule:
+    - cron: "0 0 * * *"   # 00:00 UTC = 09:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Node.js を用意
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 裁判所ウェブサイトを巡回
+        id: watch
+        run: node automation/watch.mjs
+
+      - name: 変化があれば保存してサイトを更新
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/watch.js; then
+            echo "変更なし"
+            exit 0
+          fi
+          git config user.name  "hanrei-note-bot"
+          git config user.email "momokachan2004@gmail.com"
+          git add data/watch.js
+          git commit -m "新着判例ウォッチ $(TZ=Asia/Tokyo date +%Y-%m-%d)（${{ steps.watch.outputs.added || 0 }}件追加）"
+          git push
+          # Actions からの push では Pages が再構築されないことがあるので、明示的に依頼する
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || echo "Pages の再構築依頼に失敗（次回の push で反映されます）"
