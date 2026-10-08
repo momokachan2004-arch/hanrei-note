@@ -1,7 +1,53 @@
 // 自動生成（automation/watch.mjs）。手で編集しない。
 const WATCH = {
- "updated": "2026-10-07",
+ "updated": "2026-10-08",
  "items": [
+  {
+   "id": "97123",
+   "url": "https://www.courts.go.jp/hanrei/97123/detail4/index.html",
+   "kind": "下級審",
+   "caseNo": "令和8(行ケ)50001",
+   "name": "裁決取消請求事件",
+   "date": "令和8年9月3日",
+   "dateISO": "2026-09-03",
+   "court": "東京高等裁判所",
+   "type": "",
+   "result": "",
+   "source": "",
+   "gensin": "",
+   "point": "",
+   "summary": "",
+   "refs": "",
+   "areas": [
+    "その他"
+   ],
+   "criminal": false,
+   "firstSeen": "2026-10-08",
+   "follows": ""
+  },
+  {
+   "id": "97125",
+   "url": "https://www.courts.go.jp/hanrei/97125/detail4/index.html",
+   "kind": "下級審",
+   "caseNo": "令和8(行ウ)31",
+   "name": "建築確認取消等請求事件",
+   "date": "令和8年8月6日",
+   "dateISO": "2026-08-06",
+   "court": "京都地方裁判所 第3民事部",
+   "type": "",
+   "result": "",
+   "source": "",
+   "gensin": "",
+   "point": "",
+   "summary": "",
+   "refs": "",
+   "areas": [
+    "その他"
+   ],
+   "criminal": false,
+   "firstSeen": "2026-10-08",
+   "follows": ""
+  },
   {
    "id": "97107",
    "url": "https://www.courts.go.jp/hanrei/97107/detail2/index.html",
